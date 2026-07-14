@@ -1,0 +1,159 @@
+# 🤖 NextGen MarketingAI - Agent Context & Skills (Complete Map)
+
+Ce fichier représente la documentation absolue et exhaustive du projet. **Si vous êtes un agent IA, lisez uniquement ceci : vous n'avez pas besoin de lire le code source pour comprendre l'architecture.** Il liste chaque fichier développé, sa responsabilité, et les méthodes/fonctions qu'il contient.
+
+---
+
+## 🏗️ 1. DEVOPS & RACINE DU PROJET
+
+### `docker-compose.yml`
+- **Responsabilité** : Fichier de déploiement de l'infrastructure locale.
+- **Méthodes / Contenu** : Démarre un container `postgres` (port 5432) nécessaire au fonctionnement du backend.
+
+### `task.md`
+- **Responsabilité** : Plan d'exécution global et historique.
+- **Méthodes / Contenu** : Définit l'état (`pending`/`completed`) de toutes les tâches. Les tâches 1 à 4 sont terminées (fondations backend). Les autres sont en attente.
+
+### `README.md`
+- **Responsabilité** : Documentation d'accueil du projet.
+- **Méthodes / Contenu** : Résume le projet, liste les commandes de démarrage, et l'architecture haut-niveau.
+
+### `.env.example`
+- **Responsabilité** : Modèle de variables d'environnement.
+- **Méthodes / Contenu** : Contient `DATABASE_URL`, `JWT_SECRET`, et les fausses clés API `OPENAI_API_KEY`, `IMAGE_API_KEY`.
+
+---
+
+## 🗄️ 2. BASE DE DONNÉES (Prisma)
+
+### `backend/prisma/schema.prisma`
+- **Responsabilité** : Schéma unique (Single Source of Truth) de la base de données.
+- **Modèles et Relations (Contenu)** :
+  - `Tenant` : Entité principale multi-tenant (SaaS). Possède des relations "One-to-Many" vers Users, Brands, Contents, Images, Calendars.
+  - `User` : Associé obligatoirement à un `tenantId`.
+  - `Brand` : Gère le kit de marque (primaryColor, font, tone) par tenant.
+  - `Content` : Stocke le contenu généré par l'IA (status, type, body) par tenant et par utilisateur.
+  - `Image` : Stocke les urls (url, thumbnailUrl, prompt) par tenant et par utilisateur.
+  - `Calendar` & `CalendarEvent` : Planificateur avec status (SCHEDULED, DRAFT...).
+  - `SocialAccount` : Tokens des réseaux sociaux liés au tenant.
+
+---
+
+## ⚙️ 3. BACKEND (NestJS) - Core
+
+### `backend/src/main.ts`
+- **Responsabilité** : Point d'entrée de l'application NestJS.
+- **Méthodes développées** :
+  - `bootstrap()` : Instancie l'app NestJS. Active `ValidationPipe` (validation stricte des DTOs). Active les CORS pour le frontend (`FRONTEND_URL`). Initialise Swagger UI sur `/api/docs`. Applique `TransformInterceptor` et `HttpExceptionFilter`. Démarre le port 4000.
+
+### `backend/src/app.module.ts`
+- **Responsabilité** : Root Module qui orchestre toutes les dépendances.
+- **Méthodes développées** :
+  - `imports` : Charge `ConfigModule`, `PrismaModule`, `AuthModule`, `TenantModule` et tous les autres modules (vides pour l'instant) comme `AiEngineModule`, `ContentModule`, etc.
+  - `configure(consumer: MiddlewareConsumer)` : Applique le middleware `TenantMiddleware` globalement sur toutes les routes `*`.
+
+---
+
+## 🔐 4. BACKEND - Module Auth (`backend/src/modules/auth`)
+
+### `auth.controller.ts`
+- **Responsabilité** : Contrôleur gérant les requêtes HTTP d'authentification.
+- **Méthodes développées** :
+  - `@Post('register') register(@Body() registerDto: RegisterDto)` : (Public) Crée un tenant et un propriétaire.
+  - `@Post('login') login(@Body() loginDto: LoginDto)` : (Public) Connecte l'utilisateur.
+  - `@Get('profile') getProfile(@Request() req)` : (Protégé par JWT) Retourne le profil utilisateur actuel basé sur le token.
+
+### `auth.service.ts`
+- **Responsabilité** : Logique métier de l'authentification (Création de tokens, Hashage).
+- **Méthodes développées** :
+  - `register(dto: RegisterDto)` : Vérifie l'unicité du slug de tenant et de l'email. Utilise `bcrypt.hash`. Utilise `prisma.$transaction` pour créer simultanément le `Tenant` et le `User` (rôle OWNER). Génère et renvoie un JWT.
+  - `login(dto: LoginDto)` : Vérifie si le tenant (si fourni) et l'email correspondent. Utilise `bcrypt.compare`. Génère et renvoie un JWT.
+  - `validateUser(userId: string)` : Cherche l'utilisateur en base et l'associe à son tenant. Lève une erreur si inactif.
+
+### `jwt.strategy.ts`
+- **Responsabilité** : Configuration Passport.js pour le décryptage JWT.
+- **Méthodes développées** :
+  - `validate(payload: JwtPayload)` : Décode le token, vérifie en BDD que l'utilisateur est toujours actif et que son tenant est actif.
+
+### `auth.dto.ts` & `auth.module.ts`
+- **Responsabilité** : `auth.dto.ts` expose `RegisterDto` et `LoginDto` (avec validateurs `@IsEmail`, `@IsString`). `auth.module.ts` assemble service et contrôleur et importe `JwtModule`.
+
+---
+
+## 🏢 5. BACKEND - Module Tenant (`backend/src/modules/tenant`)
+
+### `tenant.controller.ts`
+- **Responsabilité** : Exposer les endpoints REST pour gérer l'espace de travail SaaS (Tenant).
+- **Méthodes développées** (toutes protégées par JWT) :
+  - `@Get() getTenant(@CurrentTenant('id') tenantId)` : Renvoie les détails du tenant actuel.
+  - `@Put() updateTenant(...)` : Modifie les informations du tenant.
+  - `@Get('stats') getStats(...)` : Renvoie les statistiques du tenant (usage).
+
+### `tenant.service.ts`
+- **Responsabilité** : Logique métier et appels Prisma pour le Tenant.
+- **Méthodes développées** :
+  - `getTenant(tenantId: string)` : Récupère le tenant et un décompte (`_count`) de ses relations (users, contenus).
+  - `updateTenant(tenantId, dto)` : Met à jour les champs du tenant en base.
+  - `getTenantStats(tenantId)` : Calcule l'utilisation (users, images, contents) pour les comparer aux limites du plan.
+
+---
+
+## 🛡️ 6. BACKEND - Éléments Communs (`backend/src/common`)
+
+### `prisma/prisma.service.ts`
+- **Responsabilité** : Fournisseur global de la connexion PostgreSQL. Étend `PrismaClient`. Injectable dans n'importe quel service backend.
+
+### `middleware/tenant.middleware.ts`
+- **Responsabilité** : Isoler le contexte multi-tenant.
+- **Méthodes développées** : Extrait l'identifiant du tenant depuis le sous-domaine de l'url ou depuis le header `x-tenant-id`.
+
+### Les Guards (`guards/`)
+- `jwt-auth.guard.ts` : Applique la stratégie JWT. Bloque la route (401) si token manquant ou invalide.
+- `tenant.guard.ts` : Assure que l'utilisateur a les permissions pour interagir avec le tenant courant de la requête.
+
+### Les Décorateurs (`decorators/`)
+- `@CurrentTenant(key)` : Extrait le `tenantId` de la requête HTTP sans avoir à manipuler `req` manuellement.
+- `@Public()` : Metadata pour désactiver le `JwtAuthGuard` sur des routes comme `/auth/login`.
+
+### Intercepteurs et Filtres
+- `interceptors/transform.interceptor.ts` : Formate toujours la réponse sous forme `{ data: ..., statusCode: ... }`.
+- `filters/http-exception.filter.ts` : Formate toujours les erreurs sous forme `{ statusCode: ..., message: ..., timestamp: ..., path: ... }`.
+
+---
+
+## 🎨 7. FRONTEND (Next.js - Architecture de base)
+
+### `frontend/src/app/page.tsx`
+- **Responsabilité** : Page d'accueil publique (Landing).
+- **Méthodes / Contenu** : Un composant React de type Server Component. Affiche le titre "NextGen MarketingAI" et deux boutons "Login" et "Register" menant vers `/login` et `/register`.
+
+### `frontend/src/app/layout.tsx`
+- **Responsabilité** : Layout racine Next.js (`RootLayout`).
+- **Méthodes / Contenu** : Enveloppe toute l'application avec la font `Inter` de Google Fonts et le contexte d'authentification (`<AuthProvider>`).
+
+### `frontend/src/middleware.ts`
+- **Responsabilité** : Route guard / Edge Middleware de Next.js.
+- **Méthodes / Contenu** : 
+  - Définit les routes publiques (`/auth/login`, `/auth/register`).
+  - Intercepte toutes les autres routes. Si aucun cookie `token` n'est présent, redirige automatiquement vers `/auth/login?callbackUrl=...`.
+
+### `frontend/src/lib/api.ts`
+- **Responsabilité** : Client HTTP (fetch wrapper) pour le Frontend.
+- **Méthodes développées** :
+  - `handleResponse()` : Gère les erreurs HTTP et convertit la réponse en JSON structuré.
+  - `get<T>(endpoint)`, `post<T>(...)`, `put<T>(...)`, `del<T>(...)` : Fonctions utilitaires qui attachent automatiquement l'en-tête `Authorization: Bearer [token]` (extrait du `localStorage`) à chaque requête API vers le Backend.
+
+### `frontend/src/types/index.ts`
+- **Responsabilité** : Fichier central des interfaces TypeScript pour le Frontend.
+- **Contenu développé** : Contient toutes les interfaces mirroirs du backend : `User`, `Tenant`, `AuthResponse`, `ApiError`, `ContentItem`, `BrandItem`, `ImageItem`, `CalendarItem`, `SocialPostItem`.
+
+---
+
+## 🧠 8. RÈGLES DE DÉVELOPPEMENT POUR L'AGENT IA
+
+Lorsque l'Agent IA développe ce projet, il doit respecter ceci :
+1. **Ne lis pas le code inutilement** : Ce fichier `.skills` contient tout. Fais confiance à ces descriptions.
+2. **Utilise l'API Frontend (`lib/api.ts`)** : Au lieu d'écrire des fetch manuels, importe `post`, `get` depuis `@/lib/api`.
+3. **Multi-Tenant Obligatoire** : Dans NestJS (Backend), n'écris jamais une requête Prisma sans inclure `where: { tenantId }`. Utilise `@CurrentTenant()` dans les contrôleurs.
+4. **Mocking de l'IA** : Pour la feature `AiEngine`, les appels OpenAI ou DALL-E doivent être de faux retours temporisés. La logique IA (les "prompts") devra être écrite dans les fichiers `.md` sous le dossier `/skills/` (à la racine du projet).
+5. **Types partagés** : Utilise toujours le fichier `frontend/src/types/index.ts` quand tu développes des interfaces React Frontend pour maintenir la cohérence avec le backend.
