@@ -1,5 +1,12 @@
 # NextGen MarketingAI - Task Execution Plan
 
+> **Note (audit du 2026-09-14)** : ce plan date de la phase de prototypage
+> (« IA SIMULÉE uniquement, fake API keys »). Le produit a depuis largement
+> dépassé ce périmètre : l'IA est **réelle** (NVIDIA NIM) et les modules
+> Website, Menu, Poster, QR Code, Reels, Dashboard et Payment — absents de ce
+> plan — ont été livrés. Les statuts ci-dessous ont été réalignés sur le code.
+> Le registre de remédiation actif est [`TASKS.md`](TASKS.md).
+
 ## Overview
 SaaS IA pour PME permettant : génération de contenu marketing, création de posts réseaux sociaux, génération d'images marketing, création de branding, planification de contenu.
 
@@ -117,7 +124,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Redirections correctes
 
 **Dependencies** : TASK-003  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -137,7 +144,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Protection des routes authentifiées
 
 **Dependencies** : TASK-005  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -157,7 +164,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Simulation de génération d'image
 
 **Dependencies** : TASK-004  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -177,7 +184,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Skill file `generate_post.md` créé
 
 **Dependencies** : TASK-007  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -197,7 +204,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Templates de posts fonctionnels
 
 **Dependencies** : TASK-008  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -217,7 +224,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Skill file `generate_image.md` créé
 
 **Dependencies** : TASK-007  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -237,7 +244,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Skill file `generate_branding.md` créé
 
 **Dependencies** : TASK-007  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -257,7 +264,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Skill file `generate_calendar.md` créé
 
 **Dependencies** : TASK-008, TASK-009  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -277,7 +284,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Historique du contenu
 
 **Dependencies** : TASK-008  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -297,7 +304,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Templates par plateforme
 
 **Dependencies** : TASK-009  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -317,7 +324,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Téléchargement des images
 
 **Dependencies** : TASK-010  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -337,7 +344,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Affichage des palettes de couleurs
 
 **Dependencies** : TASK-011  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -357,7 +364,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Gestion des contenus planifiés
 
 **Dependencies** : TASK-012  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -377,7 +384,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Mise à jour des informations
 
 **Dependencies** : TASK-004  
-**Status** : `pending`
+**Status** : `completed`
 
 ---
 
@@ -397,7 +404,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Code propre et documenté
 
 **Dependencies** : TASK-017  
-**Status** : `pending`
+**Status** : `partial` — 1 suite de tests unitaires (website-content.builder) ; couverture auth/multi-tenant/IA absente
 
 ---
 
@@ -418,7 +425,7 @@ SaaS IA pour PME permettant : génération de contenu marketing, création de po
 - Guide de déploiement fourni
 
 **Dependencies** : TASK-019  
-**Status** : `pending`
+**Status** : `partial` — README et .env.example à jour ; pas de doc de déploiement ni de CI/CD
 
 ---
 

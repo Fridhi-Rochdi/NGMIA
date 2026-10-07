@@ -1,0 +1,131 @@
+# Production stack on one server.
+#
+#   app.<domaine>    -> frontend (Next.js)
+#   api.<domaine>    -> backend (NestJS) and the published sites/menus/files
+#   admin.<domaine>  -> admin console
+#
+# Caddy obtains and renews the HTTPS certificates itself. Postgres is never
+# exposed outside the Docker network, and is dumped every night.
+#
+# Usage (from this folder):
+#   cp .env.production.example .env   # then fill it in
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+name: nextgen
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Nightly dumps, 7 daily + 4 weekly + 6 monthly kept on the server.
+  # Copy ./backups off the server too (see DEPLOY.md): a backup on the same
+  # disk does not survive the disk.
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+    volumes:
+      - ./backups:/backups
+
+  # Applies database migrations, then exits. The API starts only once it has
+  # succeeded: a new version never runs against an old schema.
+  migrate:
+    build:
+      context: ../backend
+      target: migrate
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      FRONTEND_URL: https://app.${DOMAIN}
+      APP_URL: https://app.${DOMAIN}
+      PUBLIC_API_URL: https://api.${DOMAIN}
+      API_URL: https://api.${DOMAIN}
+      COOKIE_SECURE: "true"
+      COOKIE_SAMESITE: lax
+      # Shared by app.<domaine> and api.<domaine>: the frontend's route guard
+      # reads the session cookie the API sets.
+      COOKIE_DOMAIN: .${DOMAIN}
+    volumes:
+      # Logos, photos, published pages: kept across redeploys.
+      - uploads:/app/storage
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  admin:
+    build:
+      context: ../admin
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${DOMAIN}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - admin
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

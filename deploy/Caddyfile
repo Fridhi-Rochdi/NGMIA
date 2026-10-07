@@ -1,0 +1,32 @@
+{
+	email {$ACME_EMAIL}
+}
+
+app.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:3000
+}
+
+api.{$DOMAIN} {
+	encode zstd gzip
+	# Logos and photos can be a few MB; generation requests can run for minutes.
+	request_body {
+		max_size 10MB
+	}
+	reverse_proxy backend:4000 {
+		transport http {
+			read_timeout 10m
+			write_timeout 10m
+		}
+	}
+}
+
+admin.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy admin:3100
+}
+
+# The bare domain sends visitors to the product.
+{$DOMAIN} {
+	redir https://app.{$DOMAIN}{uri} permanent
+}

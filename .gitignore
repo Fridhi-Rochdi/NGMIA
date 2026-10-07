@@ -18,6 +18,7 @@ Thumbs.db
 .env.*.local
 
 # Logs
+logs/
 *.log
 npm-debug.log*
 
@@ -30,3 +31,9 @@ backend/dist/
 
 # Docker
 docker-data/
+
+# Personal / non-project files
+cv.tex
+
+# Production database dumps: customer data, never versioned
+deploy/backups/
