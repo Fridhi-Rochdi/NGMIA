@@ -20,12 +20,11 @@ Images Docker : `backend/Dockerfile`, `frontend/Dockerfile`, `admin/Dockerfile`.
 2. DNS : créer des enregistrements A pour `<domaine>`, `app.<domaine>`, `api.<domaine>` et `admin.<domaine>` vers l'IP du serveur.
 3. Sur le serveur :
    ```bash
-   git clone --recurse-submodules https://github.com/Fridhi-Rochdi/NGMIA.git && cd NGMIA/deploy
+   git clone --recurse-submodules -b task/002-baseline https://github.com/Fridhi-Rochdi/NGMIA.git && cd NGMIA/deploy
    cp .env.production.example .env   # remplir toutes les valeurs
    docker compose -f docker-compose.prod.yml up -d --build
    docker compose -f docker-compose.prod.yml exec backend node dist/prisma/seed-plans.js
    ```
-   Le dépôt `admin/` doit aussi être présent sur le serveur (il n'est pas encore versionné, voir point 0).
 4. Vérifier : `https://app.<domaine>` doit afficher la page d'accueil, et `https://api.<domaine>/health` doit répondre.
 
 **Sauvegardes** : la base est sauvegardée chaque nuit dans `deploy/backups` (7 jours, 4 semaines, 6 mois). Copier ce dossier ailleurs chaque jour, par exemple vers un stockage objet avec `rclone`, car une sauvegarde sur le même disque ne survit pas à la perte du disque.
@@ -78,7 +77,7 @@ Remplacer le Gmail personnel par un service transactionnel (Brevo, Postmark, Res
 
 ## 0. Versionner le code ✅
 
-Le travail est commité sur la branche `task/002-baseline` de chaque dépôt. Le dossier `admin/` reste à versionner, dans son propre dépôt ou dans le dépôt principal.
+Le travail est commité et poussé sur la branche `task/002-baseline` des trois dépôts : principal, backend et frontend. La console `admin/` est versionnée dans le dépôt principal. Pour mettre en ligne depuis `main`, fusionner cette branche (pull request) dans chaque dépôt, en commençant par backend et frontend.
 
 ## Vérification avant ouverture
 
